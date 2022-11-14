@@ -1,7 +1,11 @@
 #!/usr/bin/env
-import os
+import os,sys
 import subprocess
 import json
+
+### TODO ####
+# 1. Might need to write a func for checking to make sure a device is connected and fail over if not. 
+#    Instead of calling LockdownClient over and over just do it once and pass around the object
 
 # using the https://github.com/doronz88/pymobiledevice3 lib
 from pymobiledevice3 import usbmux
@@ -25,10 +29,26 @@ def print_json(buf):
 
 ##############################################################
 ### DEVICE INFO FUNCS ####333
+
+### Connect to device and pass back the Lockdown object
+def getLockdown():
+	connected_devices = []
+	try: 
+		lockdown = LockdownClient()
+	except:
+		print("Are you sure a device is connected?")
+		sys.exit()
+	return lockdown
+
 ### will print a list of connected devices
 def getDevicesConnected():
 	connected_devices = []
-	lockdown = LockdownClient()
+	try: 
+		lockdown = LockdownClient()
+	except:
+		print("Are you sure a device is connected?")
+		sys.exit()
+
 	for device in usbmux.list_devices():
 		udid = device.serial
 		lockdown = LockdownClient(udid, autopair=False, usbmux_connection_type=device.connection_type)
@@ -48,6 +68,10 @@ def getInstalledApps(lockdown,app_type):
 def getProcs(lockdown: LockdownClient):
     """ show process list """
     print_json(OsTraceService(lockdown=lockdown).get_pid_list().get('Payload'))
+
+
+def getDeviceStorage(lockdown):
+	print("Get the device storage")
 
 
 ##################################################################
@@ -70,7 +94,7 @@ def getSysLog(lockdown):
 ###############################
 ### TEST FUNC ##
 ##############
-def getTest():
+def test():
 	lockdown = LockdownClient()
 	#help(LockdownClient) # prints debug info for the LockdownClient Object
 	#getInstalledApps(lockdown, "User") # working
@@ -79,4 +103,6 @@ def getTest():
 	#getSysLog(lockdown) # working
 
 if __name__ == "__main__":
-	getTest()
+	#getDevicesConnected()
+	lockdown = getLockdown()
+	getDeviceInfo(lockdown)
