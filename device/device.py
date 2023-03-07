@@ -102,6 +102,7 @@ def test():
 	getProcs(lockdown) # working
 	#getSysLog(lockdown) # working
 
+# used for testing
 if __name__ == "__main__":
 	#getDevicesConnected()
 	lockdown = getLockdown()

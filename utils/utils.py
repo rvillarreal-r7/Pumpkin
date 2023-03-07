@@ -1,5 +1,7 @@
 #!/usr/bin/env
 
+# handle logging
+
 def get_zipinfo_datetime(timestamp=None):
     # Some applications need reproducible .whl files, but they can't do this without forcing
     # the timestamp of the individual ZipInfo objects. See issue #143.
