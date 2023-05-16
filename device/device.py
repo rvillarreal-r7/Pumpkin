@@ -28,7 +28,7 @@ def print_json(buf):
 
 
 ##############################################################
-### DEVICE INFO FUNCS ####333
+### DEVICE INFO FUNCS ####
 
 ### Connect to device and pass back the Lockdown object
 def getLockdown():
@@ -89,18 +89,6 @@ def getSysLog(lockdown):
 		print(line)
 
 
-
-
-###############################
-### TEST FUNC ##
-##############
-def test():
-	lockdown = LockdownClient()
-	#help(LockdownClient) # prints debug info for the LockdownClient Object
-	#getInstalledApps(lockdown, "User") # working
-	#getInstalledApps(lockdown, "System") # this one is not a JSON serial obj
-	getProcs(lockdown) # working
-	#getSysLog(lockdown) # working
 
 # used for testing
 if __name__ == "__main__":

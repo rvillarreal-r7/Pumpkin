@@ -26,7 +26,6 @@ def downloadFile(url, outfile):
                     logger.info("Download progress: %3.2f%% (%5.1fM /%5.1fM)" % (
                     downLen / totalLen * 100, downLen / 1024 / 1024, totalLen / 1024 / 1024))
                     lastLen = downLen
-
     return outfile
 
 # define the Store codes.
