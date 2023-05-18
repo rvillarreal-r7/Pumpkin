@@ -30,7 +30,23 @@ class iTunesClient(object):
                          "Content-Type": "application/x-www-form-urlencoded",
                     })
         return ItunesLookupResp.from_dict(r.json())
-
+    
+    # curl -k -X GET \
+    # -H "Content-Type: application/x-www-form-urlencoded" \
+    # https://itunes.apple.com/search?term=com.touchingapp.potatsolite&limit=10&media=software
+    def search(self, bundleId=None, appId=None, term=None, country="US", limit=10, media="software"):
+        r = self.sess.get("https://itunes.apple.com/search?",
+                    params={
+                        "term": term,
+                        "country": country,
+                        "limit": limit,
+                        "media": media,
+                    },
+                    headers={
+                         "Content-Type": "application/x-www-form-urlencoded",
+                    })
+        return ItunesLookupResp.from_dict(r.json())
+    
     def getAppVerId(self, appId, country):
         if not ',' in country:
             storeFront = STORE_TABLE[country.upper()]

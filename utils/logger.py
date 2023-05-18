@@ -18,12 +18,16 @@ class LogAdapter(logging.LoggerAdapter):
 
     def error(self,msg):
         self.logger.error(msg)
+    
+    def fatal(self,msg):
+        self.logger.fatal(msg)
 
 def setup_logger(level=logging.DEBUG, log_to_file=False, log_prefix=None, logger_name='Pumpkin'):
     # define handler and formatter
     handler = logging.StreamHandler()
-    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
-    
+    # formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
+    formatter = logging.Formatter("%(levelname)s - %(message)s")
+
     # add formatter to handler
     handler.setFormatter(formatter)
 
@@ -34,4 +38,3 @@ def setup_logger(level=logging.DEBUG, log_to_file=False, log_prefix=None, logger
     pumpkin_log.setLevel(logging.DEBUG)
 
     return pumpkin_log
-
