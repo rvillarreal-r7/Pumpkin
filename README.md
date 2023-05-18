@@ -1,4 +1,9 @@
 # Pumpkin
+
+## Design Choices
+I am using Python for quickness, but a compiled language might be better later on
+Additionally, I am currently making the assumption there will be two different ways to interact with the Pumpkin tool. It will either be through the cmdline or through an API endpoint. This should give us a good bit of flexibility for running a headless server that multiple user's can use, and also the ability to run standalone if you have your own jailbroken iOS device. The current stage of development will approach the project from the cmdline and will implement API nonsense later. 
+
 ### Cracking iOS Apps
 	# todo - 
 	# thread the API server
@@ -41,18 +46,14 @@ frida-ios-dump is based off of frida-ios-dump on Github https://github.com/Alone
 bfdecrypt - https://github.com/BishopFox/bfdecrypt
 - Todo - Things needed for frida-ios-dump
 
-#### IPATool - scrape/scrape.py
+#### IPATool - scrape/scrape.py - to be renamed
 IPATool is based off of IPATool-py on Github https://github.com/NyaMisty/ipatool-py
-Building information -
-Should be callable from all other python scripts in the Pumpkin directory
-Should be able to handle 
+Building information - Planning to reuse the already exisiting code by 'NyaMisty' instead, I'm planning on just making it extensible to the cmdline/api server
 - Todo - Things needed for IPATool
 1. Handle errors in a more graceful way
-2. Handle 2fa input
+2. Handle 2fa input 
 3. Handle environment vars, or stored creds somehow? 
 4. Ensure proper structure for calling from within different dirs
-
-
 
 #### Corellium Integration - utils/corellium.py
 The Corellium portion of this project is attempting to integrate the Pumpkin project with automated deployment with the Corellium API 

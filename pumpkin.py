@@ -1,13 +1,14 @@
-#!/usr/bin/env
-import scrape
+#!/usr/bin/env python3
+# This script has intentionally been left blank to prevent complications
 
-# Root - You are here
-#     Backend - API server handles requests from consultants
-#     Device - Handles requests/responses to the physical device
-#     Scrape - Handles requests/responses to the Apple App Store
-#     Utils - Handles conversion of data and utilities needed locally on the server running Pumpkin
-#
+def main():
+	# setup logger early 
+	from utils import logger
+	logger.setup_logger()
+	log = logger.LogAdapter()
 
+	# parse args and dowork
+	from cli import cmdline,args
 
 if __name__ == "__main__":
-	print("main - should be run from here")
+	main()
