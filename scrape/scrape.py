@@ -1,143 +1,89 @@
-#!/usr/bin/env
-import json
+#!/usr/bin/python3
+import inspect
+
+# external imports
 import requests
-import plistlib
-import getpass
+import time
+import json
+from requests.adapters import HTTPAdapter
+from urllib3 import Retry
 
-# fn for testing rate limit and staying within the defined limits
-def ratelimit():
-   print("being cautious to not overstep my rate limit")
+# local imports
+from scrape.reqs.store import *
+from scrape.reqs.itunes import *
 
+# prepend all scripts with logger object retrieval
+from utils import logger
+log = logger.LogAdapter()
 
-# this is for if you don't have the bundleID
-# data = search(term="facebook")
-# apps(data)
-# different than lookup because we don't have the bundle ID yet. 
-def search(term=None, country="US", limit=10, media="software"):
-   r = requests.get("https://itunes.apple.com/search?",
-                    params={
-                        "term": term,
-                        "country": country,
-                        "limit": limit,
-                        "media": media,
-                    },
-                    headers={
-                         "Content-Type": "application/x-www-form-urlencoded",
-                    })
-   # catch any errors with the responses and make sure it's not null
-   try:
-      try:
-        data = json.loads(r.content)
-      except:
-        print('Decoding JSON has failed')
-      results = int(data["resultCount"])
-      if results > 0:
-          return data
-      else:
-          print("No results returned from iTunes")
-   except:
-       print('Error converting to integer from string value')
+def get_zipinfo_datetime(timestamp=None):
+    # Some applications need reproducible .whl files, but they can't do this without forcing
+    # the timestamp of the individual ZipInfo objects. See issue #143.
+    timestamp = int(timestamp or time.time())
+    return time.gmtime(timestamp)[0:6]
 
-# this is for lookups when you know the bundleID
-# data = lookup(bundleId="com.Facebook")
-# apps(data)
-# curl -k -X GET \
-    # -H "Content-Type: application/x-www-form-urlencoded" \
-    # https://itunes.apple.com/lookup?bundleId=com.touchingapp.potatsolite&limit=1&media=software
-def lookup(bundleId=None, appId=None, term=None, country="US", limit=10, media="software"):
-   r = requests.get("https://itunes.apple.com/lookup?",
-                    params={
-                        "bundleId": bundleId,
-                        "id": appId,
-                        "term": term,
-                        "country": country,
-                        "limit": limit,
-                        "media": media,
-                    },
-                    headers={
-                         "Content-Type": "application/x-www-form-urlencoded",
-                    })
-   # catch any errors with the responses and make sure it's not null
-   try:
-      try:
-        data = json.loads(r.content)
-      except:
-        print('Decoding JSON has failed')
+def downloadFile(url, outfile):
+    with requests.get(url, stream=True) as r:
+        totalLen = int(r.headers.get('Content-Length', '0'))
+        downLen = 0
+        r.raise_for_status()
+        with open(outfile, 'wb') as f:
+            lastLen = 0
+            for chunk in r.iter_content(chunk_size=1 * 1024 * 1024):
+                # If you have chunk encoded response uncomment if
+                # and set chunk_size parameter to None.
+                # if chunk:
+                f.write(chunk)
+                downLen += len(chunk)
+                if totalLen and downLen - lastLen > totalLen * 0.05:
+                    log.info("Download progress: %3.2f%% (%5.1fM /%5.1fM)" % (
+                    downLen / totalLen * 100, downLen / 1024 / 1024, totalLen / 1024 / 1024))
+                    lastLen = downLen
+    return outfile
 
-      results = int(data["resultCount"])
-      if results > 0:
-          return data
-      else:
-          print("No results returned from iTunes")
-   except:
-       print('Error converting resultCount to integer from string value')
+class IPATool(object):
+    log.debug("Creating IPATool Obj")
+    def __init__(self):
+        self.sess = requests.Session()
 
-def buyApp(self, appId, appVer='', productType='C', pricingParameters='STDQ'):
-  # STDQ - buy, STDRDL - redownload, SWUPD - update
-  url = "https://p25-buy.itunes.apple.com/WebObjects/MZBuy.woa/wa/buyProduct"
+        retry_strategy = Retry(
+            connect=4,
+            read=2,
+            total=8,
+        )
+        self.sess.mount("https://", HTTPAdapter(max_retries=retry_strategy))
+        self.sess.mount("http://", HTTPAdapter(max_retries=retry_strategy))
 
+        self.appId = None
+        self.appVerId = None
+        self.jsonOut = None
 
-   
+    def searchApp(self, term=None, country="US", limit=10, media="software"):
+        log.debug("Insider Search App")
+        r = requests.get("https://itunes.apple.com/search?",
+                            params={
+                                "term": term,
+                                "country": country,
+                                "limit": limit,
+                                "media": media,
+                            },
+                            headers={
+                                "Content-Type": "application/x-www-form-urlencoded",
+                            })
+        # catch any errors with the responses and make sure it's not null
+        try:
+            try:
+                data = json.loads(r.content)
+            except:
+                log.error('Decoding JSON has failed')
+            results = int(data["resultCount"])
+            if results > 0:
+                return data
+            else:
+                log.info("No results returned from iTunes")
+        except:
+            log.error('Error converting to integer from string value')
 
-def downloadApp():
-   print("downloading app")
+    def handleLookup(self):
+        log.debug("Current Func: %s()" % (inspect.stack()[0][3]))
 
-def authenticate():
-   # needed constants
-   # guid corresponds to macaddress? from the majd/ipatool proj - maybe pull from the iOS device
-   guid = "000C2941396B"
-   # eventually will need to be removed and implemented in a POST Request from the API/user
-   #appleId = input("Username: ")
-   appleId = ("ryan_villarreal@rapid7.com")
-   password = getpass.getpass()
-
-   # get number of retries
-   attempts = 4
-   url = "https://p46-buy.itunes.apple.com/WebObjects/MZFinance.woa/wa/authenticate?guid=%s" % guid
-   
-   # create the dict for the plistlib
-   data = dict(appleId=appleId,password=password, attempt=attempts, createSession="true", guid=guid, rmp="0", why="signIn")
-   while True:
-    print("Sending Auth Request")
-    r = requests.post(url, headers={
-        "Accept": "*/*", 
-        "Content-Type": "application/x-www-form-urlencoded",
-        "User-Agent": "Configurator/2.0 (Macintosh; OS X 10.12.6; 16G29) AppleWebKit/2603.3.8", 
-        },data=plistlib.dumps(data), allow_redirects=False)
-    
-    ## if the response is a redirect to a new endpoint follow it. 
-    if r.status_code == 302:
-            print("Redirecting...")
-            url = r.headers['Location']
-            continue
-    
-    if r.status_code == 200:
-        resp = plistlib.loads(r.content)
-        # need logic here to check for 2fa - should return a specific error message if 2fa is enabled. 
-        # if you get that error message you should immediately get input from the user to enter the 2fa
-        # code and then reauth with the following format: username:password+authCode
-        print(json.dumps(resp, indent=1))
-        break
-
-def list_apps(data):
-    if data != None:
-      # handle the entries
-      try:
-         results = int(data["resultCount"])
-      except:
-         print('Error converting resultCount to integer from string value')
-      for app in data["results"]:
-        ## you can extract any and all info here. might be best to just leave it in json format
-         print("----------------------------")
-         print("App: %s" % (app["trackName"]))
-         print("Bundle: %s" % (app["bundleId"]))
-         print("Version: %s" % (app["version"]))
-         print("\n")
-         print(json.dumps(app, indent=1))
-         print("\n")
-
-# used for testing - remove before prod
-if __name__ == "__main__":
-    # this is for testing auth
-    authenticate()
-    #list_apps(search("Facebook"))
