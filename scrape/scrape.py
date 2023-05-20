@@ -4,19 +4,19 @@ import getpass
 
 # external imports
 import requests
+import sys
 import plistlib
 import os
 import zipfile
 import time
 from pick import pick
-import json
 from requests.adapters import HTTPAdapter
 from urllib3 import Retry
-import urllib.parse
 
 # local imports
 from scrape.reqs.store import *
 from scrape.reqs.itunes import *
+from device import device
 
 # prepend all scripts with logger object retrieval
 from utils import logger
@@ -49,6 +49,12 @@ def downloadFile(url, outfile):
     log.debug("Returning outfile")
     return outfile
 
+def chooseUX(options):
+    print("choose")
+    title = "Which is the correct app?"
+    option, index = pick(options, title, indicator='=>', default_index=0)
+    return (option,index)
+
 class IPATool(object):
     def __init__(self):
         log.debug("Initializing IPATool Obj")
@@ -56,6 +62,7 @@ class IPATool(object):
 
         self.appId = None
         self.appVerId = None
+        self.filepath = None
         
         retry_strategy = Retry(
             connect=4,
@@ -65,7 +72,6 @@ class IPATool(object):
         self.sess.mount("https://", HTTPAdapter(max_retries=retry_strategy))
         self.sess.mount("http://", HTTPAdapter(max_retries=retry_strategy))
 
-    
     def _outputJson(self, obj):
         self.jsonOut = obj
 
@@ -107,12 +113,25 @@ class IPATool(object):
         
         if appInfos.resultCount != 1:
             log.fatal("Failed to find app in country %s with %s" % (args.country, s))
-            return
+            sys.exit() # pprint an error message - don't panic
         
         appInfo = appInfos.results[0]
         log.debug("Found app:\n\tName: %s\n\tVersion: %s\n\tbundleId: %s\n\tappId: %s" % (appInfo.trackName, appInfo.version, appInfo.bundleId, appInfo.trackId))
         self.appId = appInfo.trackId
         self.appInfo = appInfo
+
+        user_input = input("Start downloading [ %s ] ? [yes/no] " % appInfo.bundleId)
+        yes_choices = ['yes', 'y']
+        no_choices = ['no', 'n']
+
+        if user_input.lower() in yes_choices:
+            #self.handleDownload(args) # remove comment after testing
+            print("REMOVE AFTER TESTING...")
+            print(self.appInfo)
+        elif user_input.lower() in no_choices:
+            sys.exit("kbai")
+        else:
+            print('yes or no')
 
     def handleDownload(self,args):
         log.debug("Current Func: %s()" % (inspect.stack()[0][3]))
@@ -120,7 +139,7 @@ class IPATool(object):
         args.appVerId = None
         #args.appleid = input("username: ")
         log.debug("Get Username/PW")
-        args.output_dir = "."
+        args.output_dir = "./downloads"
         args.appleid = input("Username: ")
         args.password = getpass.getpass()
 
@@ -150,6 +169,7 @@ class IPATool(object):
 
             downResp = Store.download(self.appId, self.appVerId)
             log.debug(downResp)
+
             if not downResp.songList:
                 log.fatal("Failed to get app download info!")
                 raise StoreException('download', downResp, 'no songList')
@@ -195,6 +215,7 @@ class IPATool(object):
                 for i, sinfPath in enumerate(scManifest['SinfPaths']):
                     ipaFile.writestr(appContentDir + '/' + sinfPath, sinfs[i])
             log.info("Downloaded ipa to %s" % filename)
+            self.filepath = filepath
         ##############################    
         except StoreException as e:
             self._handleStoreException(e)
@@ -218,16 +239,13 @@ class IPATool(object):
         options = []
         for i in appInfos.results:
             options.append(i.bundleId)
-
-        title = "Which is the correct app?"
-        option, index = pick(options, title, indicator='=>', default_index=0)
+        options,index = chooseUX(options)
 
         appInfo = appInfos.results[index]
         log.debug("Found app:\n\tName: %s\n\tVersion: %s\n\tbundleId: %s\n\tappId: %s" % (appInfo.trackName, appInfo.version, appInfo.bundleId, appInfo.trackId))
         self.appId = appInfo.trackId
         self.appInfo = appInfo
-                
-        # I'm not a huge fan of this UX but for now it will work
+        
         user_input = input("Start downloading [ %s ] ? [yes/no] " % option)
         yes_choices = ['yes', 'y']
         no_choices = ['no', 'n']
@@ -238,5 +256,11 @@ class IPATool(object):
             print('user typed no')
         else:
             print('Type yes or no')
+    
+    def handleInstall(self,args):
+        log.debug("Sending [%s] info to Install location" % (self.filepath))
+        devs = device.DeviceTool()
+        target_dev = devs.getLockdown("0e0499a792fcc045297781ded452c664902ebf31")
+        devs.uninstallApp(self.appInfo.bundleId,target_dev)
 
-        
+

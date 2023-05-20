@@ -6,6 +6,7 @@ class LogAdapter(logging.LoggerAdapter):
     def __init__ (self, logger_name="Pumpkin", extra=None):
         self.logger = logging.getLogger(logger_name)
         self.extra = extra
+        self.DEBUG = logging.DEBUG
 
     def info(self,msg):
         self.logger.info(msg)
@@ -22,6 +23,9 @@ class LogAdapter(logging.LoggerAdapter):
     def fatal(self,msg):
         self.logger.fatal(msg)
 
+    def getLevel(self):
+        return self.logger.level
+
 def setup_logger(level=logging.DEBUG, log_to_file=False, log_prefix=None, logger_name='Pumpkin'):
     # define handler and formatter
     handler = logging.StreamHandler()
@@ -35,6 +39,6 @@ def setup_logger(level=logging.DEBUG, log_to_file=False, log_prefix=None, logger
     pumpkin_log = logging.getLogger(logger_name)
     pumpkin_log.propagate = False
     pumpkin_log.addHandler(handler)
-    pumpkin_log.setLevel(logging.DEBUG)
+    pumpkin_log.setLevel(level)
 
     return pumpkin_log
