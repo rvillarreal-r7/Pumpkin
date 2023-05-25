@@ -5,11 +5,13 @@ import argparse
 
 ### local imports ###
 from utils import logger
-from device import device
+from devices import device
 from cli import cmdline
-log = logger.LogAdapter()
+log = logger.LogAdapter(__name__)
 
-# TODO: Cleanup
+# TODO: 
+#  - Cleanup
+#  - Add additional options
 parser = argparse.ArgumentParser(description="Pumpkin", add_help=True)
 tld_group = parser.add_mutually_exclusive_group(required=True)
 tld_group.add_argument('--cmd', '-c', dest='cmd', action='store_true', help="Use the cmdline tooling")
@@ -21,26 +23,24 @@ second_group.add_argument("--search", '-s',dest='searchTerm')
 second_group.add_argument("--lookup", '-l',dest='lookupTerm')
 args = parser.parse_args()
 
+# Three core CLI options [cli,api,dev]
+#  cli: run the tooling in CLI mode with local USB devices
+#  api: run the tooling in headless mode
+#  dev: diagnostics of connected USB devices
 if args.cmd:
     log.debug("Starting cmdline mode")
-    log.debug(args)
-    # cmdline.search(args.searchTerm)
     if args.searchTerm:
-        log.info("Performing a searching for an app")
         cmdline.search(args)
     else:
-        log.debug("Already have the BundleID")
         cmdline.lookup(args)
 
 elif args.api:
     log.debug("Running API headless mode")
-    log.debug(args)
+    log.halt("Todo")
 
 elif args.dev:
-    log.debug("Loading Device Functions")
-    dev = device.DeviceTool()
-    dev.getDevicesInfo()
+    # log.debug("Loading Device Diagnostics")
+    cmdline.devices(args)
 
 else:
     log.error("Ruh Roh Raggy")
-    log.debug(args)

@@ -1,36 +1,15 @@
 #!/usr/bin/env
 
-# temp logging
+# external imports
 from pick import pick
-import sys
-import json
+import sys, requests, time
 
-# prepend all scripts with logger object retrieval
-# from utils import logger
-# log = logger.getLogger(__name__)
-import logging
-log = logging.getLogger(__name__)
+# prepend all modules
+from utils import utils, logger
+log = logger.LogAdapter(__name__)
 
-def parseData(data):
-    log.info("parsing data")
-    try:
-        results = int(data["resultCount"])
-    except:
-        log.debug('Error converting resultCount to integer from string value')
-        log.debug("Data: ") # had to remove data because it was empty
-        log.debug("Exiting")
-        sys.exit()
-
-    options = []
-    for app in data["results"]:
-        # adding the names to a list for the cmdline picker
-        options.append(app["trackName"] + " - " + app["bundleId"] + " - v" + app["version"])
-
-    title = "Which is the correct app?"
-    option, index = pick(options, title, indicator='=>', default_index=0)
-    
-    return (data["results"][index])
-
+# input - timestamp (time obj)
+# return - time.gmtime (time obj)
 def get_zipinfo_datetime(timestamp=None):
     log.debug("getting zipinfo datetime")
     # Some applications need reproducible .whl files, but they can't do this without forcing
@@ -38,9 +17,10 @@ def get_zipinfo_datetime(timestamp=None):
     timestamp = int(timestamp or time.time())
     return time.gmtime(timestamp)[0:6]
 
-
+# input - url (str), outfile (str) - url of download, outfile where to write contents
+# return - outfile (bytes?) - not sure I need this to be returned
 def downloadFile(url, outfile):
-    log.debug("downloading file")
+    log.debug("Downloading file...")
     with requests.get(url, stream=True) as r:
         totalLen = int(r.headers.get('Content-Length', '0'))
         downLen = 0
@@ -54,7 +34,49 @@ def downloadFile(url, outfile):
                 f.write(chunk)
                 downLen += len(chunk)
                 if totalLen and downLen - lastLen > totalLen * 0.05:
-                    logger.info("Download progress: %3.2f%% (%5.1fM /%5.1fM)" % (
+                    log.debug("Download progress: %3.2f%% (%5.1fM /%5.1fM)" % (
                     downLen / totalLen * 100, downLen / 1024 / 1024, totalLen / 1024 / 1024))
                     lastLen = downLen
+    log.debug("Returning outfile of type [%s]" % type(outfile))
     return outfile
+
+# input - options (list(strings)) - list of app options
+# return - tuple[option(str), index(int)]
+def chooseApp(options):
+    title = "Which is the correct app?"
+    option, index = pick(options, title, indicator='=>', default_index=0)
+    return (option,index)
+
+# input - msg (str) - Can be none as well as a string
+# return - bool - User choice in True/False
+def choice(msg=None) -> bool:
+    yes_choices = ['yes', 'y']
+    no_choices = ['no', 'n']
+    if msg:
+        user_input = input("%s [yes/no] " % (msg))
+    else: # if no msg passed in a simple yes or no will suffice. 
+        user_input = input("Continue? [yes/no] ")
+    # check answer
+    if user_input.lower() in yes_choices:
+        return True
+    elif user_input.lower() in no_choices:
+        return False
+    else:
+        print('That is not an option try again') # fixme
+
+# input - size_bytes (int)
+# return - tuple[ s (str) size_name(str) ]
+def convert_size(size_bytes):
+   if size_bytes <= 0:
+       return "0B"
+   size_name = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
+   i = int(math.floor(math.log(size_bytes, 1024)))
+   p = math.pow(1024, i)
+   s = round(size_bytes / p, 2)
+   return "%s %s" % (s, size_name[i])
+
+# input - None
+# return - None 
+def kbye(caller=__name__):
+    log.info("%s: kthxbye!" % caller)
+    sys.exit()

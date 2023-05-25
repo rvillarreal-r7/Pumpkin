@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-# This script has intentionally been left blank to prevent complications
+# This file is intentionally left blank to prevent complexities 
 
 def main():
 	# setup logger early 
 	from utils import logger
-	logger.setup_logger()
-	log = logger.LogAdapter()
+	log = logger.LogAdapter(__name__)
 
 	# parse args and dowork
 	from cli import cmdline,args

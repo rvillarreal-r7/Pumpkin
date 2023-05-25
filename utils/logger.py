@@ -3,10 +3,8 @@ import logging
 
 # create an obj for passing around
 class LogAdapter(logging.LoggerAdapter):
-    def __init__ (self, logger_name="Pumpkin", extra=None):
-        self.logger = logging.getLogger(logger_name)
-        self.extra = extra
-        self.DEBUG = logging.DEBUG
+    def __init__ (self,logger_name):
+        self.logger = setup_logger(logger_name=logger_name)
 
     def info(self,msg):
         self.logger.info(msg)
@@ -22,15 +20,21 @@ class LogAdapter(logging.LoggerAdapter):
     
     def fatal(self,msg):
         self.logger.fatal(msg)
+        from utils import utils
+        utils.kbye()
 
+    def halt(self,msg):
+        self.logger.warning("HALTED: %s " % msg)
+        input("Press [Enter] to continue")
+        
     def getLevel(self):
         return self.logger.level
 
-def setup_logger(level=logging.DEBUG, log_to_file=False, log_prefix=None, logger_name='Pumpkin'):
+def setup_logger(level=logging.DEBUG, log_to_file=False, log_prefix=None, logger_name=__name__):
     # define handler and formatter
     handler = logging.StreamHandler()
-    # formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
-    formatter = logging.Formatter("%(levelname)s - %(message)s")
+    # change formatting and look here.
+    formatter = logging.Formatter("%(levelname)s - [%(name)s] - %(message)s")
 
     # add formatter to handler
     handler.setFormatter(formatter)
