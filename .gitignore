@@ -127,5 +127,10 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+# Notes section for random scribblings
 notes/*
-
+# downloads reserved for app downloads and Dev image downloads
+downloads/*
+# test script for one-off tests
+tests/test.py
+tests/bak.py

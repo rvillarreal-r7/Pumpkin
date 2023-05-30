@@ -82,11 +82,11 @@ class IPATool(object):
             f = self.getFilename(self.appInfo.bundleId, self.appInfo.version)
         else:
             f = self.appInfo.filepath
+        
+        self.appInfo.filepath = DOWNLOAD_DIR + f # reasons
         # before taking auth make sure the app isn't already downloaded to the system
-        if os.path.exists(DOWNLOAD_DIR + f):
-            self.appInfo.filepath = DOWNLOAD_DIR + f
-            log.debug("App [%s] is downloaded already" % (f))
-            log.debug("Setting self.appInfo.filepath as [%s]" % self.appInfo.filepath)
+        if os.path.exists(self.appInfo.filepath):
+            log.debug("App [%s] is downloaded already" % (self.appInfo.filepath))
             return True
         else:
             log.debug("App [%s] is not downloaded already" % (f))
@@ -123,6 +123,8 @@ class IPATool(object):
             if self.target.isAppInstalled(self.appInfo.bundleId): 
                 if utils.choice("Would you like to Reinstall [%s]" % (self.appInfo.bundleId)):
                      self.handleInstall()
+                else:
+                    self.target.launchApp(self.appInfo.bundleId)
             else:
                 if utils.choice("App [%s] already downloaded. Would you like to install" % self.appInfo.bundleId):
                     self.handleInstall() # app downloaded but not installed, prompt for install?
@@ -131,7 +133,9 @@ class IPATool(object):
                 if self.handleDownload():
                     self.handleInstall()
                 else:
-                    utils.kbye(__name__)
+                    log.halt("here")
+                    self.target = self.getDevice()
+                    self.target.launchApp()
             
     # input - self(obj),args(argparse obj)
     # return - bool - Status of lookup
@@ -162,7 +166,9 @@ class IPATool(object):
         if self.appDownloaded():
             if self.target.isAppInstalled(self.appInfo.bundleId): 
                 if utils.choice("Would you like to Reinstall [%s]" % (self.appInfo.bundleId)):
-                     self.handleInstall()
+                    self.handleInstall()
+                else:
+                    self.target.launchApp(self.appInfo.bundleId)
             else:
                 if utils.choice("App [%s] already downloaded. Would you like to install" % self.appInfo.bundleId):
                     self.handleInstall() # app downloaded but not installed, prompt for install?
@@ -226,17 +232,14 @@ class IPATool(object):
         except StoreException as e:
             self._handleStoreException(e)
  
-    # input -
-    # return -
+    # input - self(obj)
+    # return - None - maybe status eventually?
     def handleInstall(self):
-        devs = device.Devices()
-
-        #need a load balancer method, but not a priority for now we will just select one dev
-        target = devs.getLockdown("0e0499a792fcc045297781ded452c664902ebf31") # remove after testing
+        target = self.getDevice() # for now no args needed to pass - eventually DeviceID
 
         # error checking for target
         if target is None:
-            log.error("target is None")
+            log.error("Why is target None?")
             log.halt("fixme")
         
         if self.appInfo.filepath:
@@ -250,9 +253,16 @@ class IPATool(object):
         if status:
             log.debug("Launching [%s] on device [%s] now." % (self.appInfo.bundleId, target))
             if target.launchApp(self.appInfo.bundleId):
-                log.halt("decrypt time!")
+                log.halt("Decrypt time!")
             else:
                 log.halt("Handle Launch errors")
+
+    # input - self(obj)
+    # return - Lockdown Obj - this will eventually become the adapter for the load balancer
+    def getDevice(self):
+        devs = device.Devices()
+        #need a load balancer method, but not a priority for now we will just select one dev
+        return devs.getLockdown("0e0499a792fcc045297781ded452c664902ebf31") # remove when loadbalancer
 
     # input - 
     # return - 

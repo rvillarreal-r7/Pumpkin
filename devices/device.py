@@ -4,6 +4,7 @@ import math
 import sys
 import os
 import time
+import tempfile
 from pathlib import Path
 
 
@@ -18,6 +19,7 @@ from pathlib import Path
 # local imports
 from utils import utils
 from scrape import downloader
+from devices import decrypt
 
 # prepend all scripts with logger object retrieval
 from utils import logger
@@ -25,7 +27,7 @@ log = logger.LogAdapter(__name__)
 
 # using the https://github.com/doronz88/pymobiledevice3 lib
 from pymobiledevice3 import usbmux
-# lockdown client handles the majority of communications1
+# lockdown client handles the majority of communications
 from pymobiledevice3.lockdown import LockdownClient
 from pymobiledevice3.services.diagnostics import DiagnosticsService
 from pymobiledevice3.services.installation_proxy import InstallationProxyService
@@ -39,10 +41,28 @@ from pymobiledevice3.services.dvt.dvt_secure_socket_proxy import DvtSecureSocket
 from pymobiledevice3.services.dvt.instruments.process_control import ProcessControl
 from pymobiledevice3.services.mobile_image_mounter import MobileImageMounterService
 from pymobiledevice3.services.os_trace import OsTraceService
+from pymobiledevice3.tcp_forwarder import TcpForwarder
+
+# external imports
+import threading,frida
 
 
 DISK_IMAGE_TREE = 'https://api.github.com/repos/pdso/DeveloperDiskImage/git/trees/master'
 IMAGE_TYPE = 'Developer'
+
+# input - self(obj)
+# return - bool - is the port available? return True if we can use it and false if it's already blocked by another proc
+def isPortAvail(port):
+	# decided to pull this func out of the Device/Devices class because it doesn't really need those objects. and it's about the 
+	# local device so it didn't feel "right"
+	import socket
+	a_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	status = (a_socket.connect_ex(("127.0.0.1", int(port))) != 0)
+	if status:
+		log.debug("isPort [%s] Avail? [%s]" % (port,status))
+		return True
+	else:
+		return False
 
 # input - version of Developer Image to download
 # return - bool - did it download successfully? 
@@ -73,7 +93,7 @@ class Devices(object):
 			sys.exit()
 
 		for device in usbmux.list_devices():
-			log.debug("DEVICE: %s" % device)
+			log.debug("Device: [%s]" % device)
 			udid = device.serial
 			lockdown = LockdownClient(udid, autopair=False, usbmux_connection_type=device.connection_type)
 			connected_devices.append(lockdown) # adding the entire lockdown obj to the list to return. That way we can pass it
@@ -98,17 +118,26 @@ class Devices(object):
 # class Device will handle a single device
 class Device(object):
 	def __init__(self, target):
-		log.debug("Initializing Device Tool Obj")
-		self.apps = []
-		self.device = target
+		log.debug("Initializing Device [%s] Tool Obj" % (target.identifier))
+		#self.apps = [] # hold for testing
+		self.apps = 
+
+		self.device = target # individual target in this class
+		
+		# each device will need a USBmuxdaemon, SSH connection, and a frida session to be passed around.		
+		self.device.usbConn = self.setupUSBconn()
+		self.setupSSHconn()
+		self.device.frida_session = decrypt.FridaSession(self.device)
+		# might need to make sure this completes successfully first ^ 
+		# TODO: get SSH setup during runtime and stable
+		#self.apps = self.getAllInstalledApps() # TODO background this so it goes faster while user is doing things
 
 	# input - self(obj)
 	# return - bool - Status of getting all Installed Apps for a device
-	def getAllInstalledApps(self):
-		log.debug("Finding all Apps Installed on Device [%s]" % self.device)
+	def allApps(self):
+		log.debug("Finding all Apps Installed on Device [%s]" % self.device.identifier)
 		all = []
-		for device in self.devices:
-			self.searchAppDomains(device)
+		self.searchAppDomains(self.device)
 
 	### get a list of Apps installed based on app_type: ['User', 'System', 'Hidden'] # case sensitive
 	# input - 
@@ -133,8 +162,6 @@ class Device(object):
 
 	# input - lockdown obj, app (file path)
 	# return - bool - Status of installation
-	# actually we should take the app obj and not the file path
-	# TODO: Handle min OS versioning
 	def installApp(self,filepath,bundleId) -> bool:
 		log.debug("Installing %s on %s" % (filepath, self.device.short_info['Identifier']) )
 		# check for existing apps already
@@ -166,7 +193,6 @@ class Device(object):
 	# input - self, bundleId (str), device (lockdown obj)
 	# return - Bool - was the app successfully uninstalled?
 	def uninstallApp(self,bundleId):
-		log.halt("fix this...")
 		log.debug("Uninstalling %s on %s" % (bundleId, self.device.short_info))
 		try:
 			InstallationProxyService(lockdown=self.device).uninstall(bundleId)
@@ -200,21 +226,79 @@ class Device(object):
 		log.halt("isFull() - fixme")
 		log.debug("[%s] Storage: " % utils.convert_size(self.getDeviceStorage(device)))
 	
+	# input - None
+	# return - None
+	def backgroundThread(self):
+		log.debug("Threading the forwarder until the script is killed")
+		self.device.forwarder.start()
+    
+	# input - self(obj)
+	# return - int - a random and available port within a specific range
+	def randPort(self):
+		import random
+		port = random.randint(60000,65000)
+		while True:
+			if isPortAvail(port):
+				log.debug("Port [%i] is available" % (port))
+				return port
+		
+	# input - self(obj)
+	# return - threading.Thread obj
+	def setupUSBconn(self) -> threading.Thread:
+		# create a usbmux daemonized object that will allow for interaction with the devices over usb ssh
+		self.device.src_port = self.randPort() # get a currently available port from 60k to 65k 
+		self.device.dst_port = 22 # 
+		log.debug("Starting USBMuxd on src_port: [%s]" %self.device.src_port)
+		try:
+			self.device.forwarder = TcpForwarder(self.device.src_port, self.device.dst_port, serial=self.device.identifier)
+			log.debug("Forwarder started successfully")
+		except:
+			log.error("Failed to setup USB connection")
+		return threading.Thread(target=self.backgroundThread,daemon=True).start()
+
+	# input - self(obj)
+	# return - Paramiko SSH session for later use. 
+	def setupSSHconn(self):
+		import paramiko
+		client = paramiko.SSHClient()
+		client.set_missing_host_key_policy(paramiko.AutoAddPolicy)
+		# ugh - don't wanna just use hardcoded creds		
+		try:
+			client.connect(hostname='localhost', port=self.device.src_port, username="root", password="alpine")
+			self.device.sshConn = client
+			log.debug("SSH Connection Successful")
+		except:
+			log.fatal("SSH Client Failed to connect")
+
 	# input - device (lockdown obj)
 	# return - bool - does the device have root perms?
 	def isRoot(self):
-		log.halt("isRoot() - Fixme")
 		#ssh to phone whoami over usbmux port forwarder
 		# 1. port forward
-		# 2. try to ssh
-		# 3. run commands (whomai)
-		# 4. report status
-
+		# port forward should be setup during init. we can check. 
+		if self.device.sshConn:
+			# sshConn successfully setup
+			try:
+				stdin, stdout, stderr = self.device.sshConn.exec_command('whoami')
+				resp = stdout.read().decode().strip()
+			except:
+				log.fatal("Error getting response from SSH Client")
+		if resp == "root":
+			return True
+		else:
+			return False
 
 	# input - device (lockdown client)
 	# return - bool - if Frida is installed and running
-	def isFridaInstalled(self,device):
-		log.halt("isFridaInstalled() - fixme")
+	def isFridaReady(self):
+		if self.device.sshConn:
+			self.device.frida_session = frida.get_device(self.device.identifier)
+			log.debug("sshConn is setup correctly")
+			if self.device.frida_session:
+				return True
+		else:
+			log.fatal("Error getting response from SSH Client")
+			return False
 	
 	# input - device (lockdown obj), bundleId (str)
 	# return - bool - return status of app launch
@@ -222,12 +306,15 @@ class Device(object):
 		if self.isMounted():
 			with DvtSecureSocketProxyService(lockdown=self.device) as dvt:
 				self.pid = ProcessControl(dvt).launch(bundle_id=bundleId)
-			log.debug("PID: %s" % self.pid)
-			return True
-			# self.appRunning(device,bundleId) # TODO we could do some manual verification or even get current foreground app/pid
+			if self.pid >= 1:
+				log.debug("App [%s] launched successfully on PID [%s]" % (bundleId, self.pid))
+				# handle decrypt here
+				self.decryptApp()
+			else:
+				log.halt("get error from launch") # need to relaunch
+				#self.appRunning(device,bundleId) # TODO we could do some manual verification or even get current foreground app/pid
 		else:
 			self.mountHandler(self.device)
-			# after successfully mounted start over. 
 
 	# input - device (lockdown obj)
 	# return - bool - did the app launch successfully?
@@ -292,3 +379,17 @@ class Device(object):
 		else:
 			log.debug("Not found: [%s] or [%s]" % (dev_image,dev_sig))
 			return False
+		
+	# input - 
+	# return - 
+	def decryptApp(self):
+		print(dir(self))
+		log.halt("here")
+		sesh = decrypt.FridaSession(self.device,"Facebook")
+		# check for root
+		if self.isRoot() and self.isFridaReady(): #TODO: i'll probably change the isFridaReady to the FridaSession Obj
+			log.debug("Device is rooted and Frida is ready begin dump.")
+		else:
+			log.fatal("Device is not rooted or unable to get Frida port")
+
+		print(dir(sesh.session))
