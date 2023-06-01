@@ -41,7 +41,7 @@ class AppManager(object):
         self.apps = [] # I think I need to clear this since we are appending? 
         for entry in results:
             self.add_app(App(entry))
-        log.halt("Apps Refreshed")
+        log.debug("Apps Refreshed")
 
 # look into adding kwargs to get extra info
 class App(object):

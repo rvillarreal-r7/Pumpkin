@@ -100,7 +100,6 @@ class IPATool(object):
         # TODO this needs to be a valid bundle or AppID otherwise it will fail
         self.args.country = "US" # default for now
 
-        # create iTunesClient obj
         iTunes = iTunesClient(self.sess)
         log.debug("searchTerm: %s" % self.args.searchTerm )
         self.appInfos = iTunes.search(term=self.args.searchTerm)

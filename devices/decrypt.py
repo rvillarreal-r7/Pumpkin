@@ -11,13 +11,11 @@ TEMP_DIR = tempfile.gettempdir()
 PAYLOAD_DIR = 'Payload'
 PAYLOAD_PATH = os.path.join(TEMP_DIR, PAYLOAD_DIR)
 
-
 class FridaSession(object):
     def __init__(self,device):
         log.debug("Initializing FridaSession Obj")
         self.session = self.setupSession(device)
-        #self.tmp_dir = self.create_dir()
-        #log.halt(self.tmp_dir)
+        self.tmp_dir = self.create_dir()
 
     def setupSession(self,device):
         try:
@@ -25,31 +23,23 @@ class FridaSession(object):
         except:
             log.fatal("Error getting FridaSession")
 
-    def dump(self):
-        log.debug('dump')
+    def create_dir(self,path=OUTPUT_DIR):
+        # create temp dir for dumping to
+        try:
+            os.makedirs(OUTPUT_DIR)
+        except os.error as err:
+            log.error(err)
 
-    def create_dir(self):
         log.halt("create dir")
-        # path = path.strip()
-        # path = path.rstrip('\\')
-        # if os.path.exists(path):
-        #     print("dear god...")
-        #     #shutil.rmtree(path)
-        # try:
-        #     os.makedirs(path)
-        # except os.error as err:
-        #     print(err)
     
-    def load_js_file(self, session, filename):
+    def load_js_file(self, filename):
         source = ''
         with codecs.open(filename, 'r', 'utf-8') as f:
             source = source + f.read()
         log.halt("huh? fixme")
-        script = session.create_script(source)
-        script.on('message', on_message)
-        script.load()
-        return script
 
+    def dump(self,app):
+        log.debug('Dumping App [%s]')
     
 
     def generate_ipa(path, display_name):

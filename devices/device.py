@@ -308,13 +308,13 @@ class Device(object):
 		else:
 			log.fatal("Device is not rooted or unable to get Frida port")
 		sesh = decrypt.FridaSession(self.device)
-		# print(sesh.session)
-		# print(dir(sesh))
-		# print(dir(sesh.session))
+
+		# handle foreground errors
 		foreground = sesh.session.get_frontmost_application().identifier == bundleId
 		if not foreground:
 			log.halt("not in the foreground exiting...fixme"); sys.exit()
 		
-		# 
+		sesh.dump(bundleId)
+		log.halt("exiting")
 
 
