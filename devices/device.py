@@ -13,13 +13,12 @@ from pathlib import Path
 # we should standardize where the parameters are going i.e. (self,device,bundleId/targetdev/whatever)
 # I should probably break this up to a more manageable class - 
 # - break apps into a objects
-# - break devices into individual device objs
-# - change everything to be obj oriented instead of always passing - will help with concurrency later
 
 # local imports
 from utils import utils
 from scrape import downloader
 from devices import decrypt
+from devices import apps
 
 # prepend all scripts with logger object retrieval
 from utils import logger
@@ -50,20 +49,6 @@ import threading,frida
 DISK_IMAGE_TREE = 'https://api.github.com/repos/pdso/DeveloperDiskImage/git/trees/master'
 IMAGE_TYPE = 'Developer'
 
-# input - self(obj)
-# return - bool - is the port available? return True if we can use it and false if it's already blocked by another proc
-def isPortAvail(port):
-	# decided to pull this func out of the Device/Devices class because it doesn't really need those objects. and it's about the 
-	# local device so it didn't feel "right"
-	import socket
-	a_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	status = (a_socket.connect_ex(("127.0.0.1", int(port))) != 0)
-	if status:
-		log.debug("isPort [%s] Avail? [%s]" % (port,status))
-		return True
-	else:
-		return False
-
 # input - version of Developer Image to download
 # return - bool - did it download successfully? 
 def downloadVersion(version):
@@ -79,7 +64,7 @@ class Devices(object):
 	# input - self(obj)
 	# return - initializes a Devices obj and returns to the calling func
 	def __init__(self):
-		log.debug("Self Obj Created: [%s]" % self)
+		log.debug("DeviceManager Initializing")
 		self.devices = self.getDevicesConnected()
 	
 	# input - self(obj)
@@ -104,7 +89,7 @@ class Devices(object):
 	def getDevicesInfo(self):
 		log.debug("Devices:")
 		for device in self.devices:
-			print("\nDevice:[%s]\nIdentifier:[%s]\nVersion:[%s]\n" % (device.display_name, device.identifier, device.product_version))
+			log.info("\nDevice:[%s]\nIdentifier:[%s]\nVersion:[%s]\n" % (device.display_name, device.identifier, device.product_version))
 
 	# input - self(obj), device_identifier(str) - uses the 'Identifier' string 
 	# return - Device(obj) - returns the Lockdown Client Obj for the target device
@@ -119,106 +104,25 @@ class Devices(object):
 class Device(object):
 	def __init__(self, target):
 		log.debug("Initializing Device [%s] Tool Obj" % (target.identifier))
-		#self.apps = [] # hold for testing
-		self.apps = 
 
-		self.device = target # individual target in this class
+		# individual target device in this class - holds the lockdown obj
+		self.device = target 
+
+		# AppManager class handles interfacing with app functions (install, uninstall, list, etc)
+		self.app_manager = apps.AppManager(self.device)
+		log.debug("Device [%s] has [%s] apps installed system wide." % (self.device.identifier, len(self.app_manager.apps)))
 		
 		# each device will need a USBmuxdaemon, SSH connection, and a frida session to be passed around.		
 		self.device.usbConn = self.setupUSBconn()
 		self.setupSSHconn()
+
+		# TODO err handling here
 		self.device.frida_session = decrypt.FridaSession(self.device)
-		# might need to make sure this completes successfully first ^ 
-		# TODO: get SSH setup during runtime and stable
-		#self.apps = self.getAllInstalledApps() # TODO background this so it goes faster while user is doing things
-
-	# input - self(obj)
-	# return - bool - Status of getting all Installed Apps for a device
-	def allApps(self):
-		log.debug("Finding all Apps Installed on Device [%s]" % self.device.identifier)
-		all = []
-		self.searchAppDomains(self.device)
-
-	### get a list of Apps installed based on app_type: ['User', 'System', 'Hidden'] # case sensitive
-	# input - 
-	# return - 
-	def searchAppDomains(self,device):
-		search = []
-		app_types = ['User', 'System', 'Hidden']
-		for app_type in app_types:
-			search.append(self.getApps(app_type,device))
-		return search # returns a list of dicts
-
-	# input - 
-	# return - 
-	def getApps(self,app_type,device):
-		log.debug("Searching Domain [%s] on Device [%s]" % (app_type,device.short_info['Identifier']))
-		return InstallationProxyService(lockdown=device).get_apps(app_type) # this is a return type of dict
 	
 	# input - lockdown obj
 	# return - available device storage in byte_size(str)
 	def getDeviceStorage(self):
 		return self.device.all_domains['com.apple.disk_usage']['AmountDataAvailable']
-
-	# input - lockdown obj, app (file path)
-	# return - bool - Status of installation
-	def installApp(self,filepath,bundleId) -> bool:
-		log.debug("Installing %s on %s" % (filepath, self.device.short_info['Identifier']) )
-		# check for existing apps already
-		if self.isAppInstalled(bundleId):
-			log.debug("[%s] is already installed on [%s]" % (bundleId,self.device))
-			if utils.choice("Would you like to uninstall [%s] first?" % bundleId):
-				log.debug("Uninstalling now....")
-				self.uninstallApp(bundleId)
-				if not self.isAppInstalled(bundleId):
-					log.debug("Successfully uninstalled, reinstalling now")
-					InstallationProxyService(lockdown=self.device).install_from_local(filepath)
-					return True
-				else:
-					log.error("Failed to uninstall correctly. Please remove the target app manually")
-					return False
-			else:
-				return True
-		else:
-			log.debug("App is not installed, starting install...")
-
-			InstallationProxyService(lockdown=self.device).install_from_local(filepath)
-			if self.isAppInstalled(bundleId):
-				log.debug("App successfully installed, launching now")
-				return True
-			else:
-				log.error("Error, try again")
-				return False
-
-	# input - self, bundleId (str), device (lockdown obj)
-	# return - Bool - was the app successfully uninstalled?
-	def uninstallApp(self,bundleId):
-		log.debug("Uninstalling %s on %s" % (bundleId, self.device.short_info))
-		try:
-			InstallationProxyService(lockdown=self.device).uninstall(bundleId)
-			return True
-		except:
-			log.error("Error uninstalling")
-			return False
-
-	# input - self, device(Lockdown client object), bundleId (string)
-	# return - Bool - Is the application currently installed on the target device?
-	def isAppInstalled(self,bundleId):
-		# this is slow af. we need to speed this up somehow. 
-		# I _doubt_ this will change as frequently as some system resources
-		# so maybe some sort of file caching of current system/hidden apps?
-		# or async do a search of apps upon initial spin up. but that will require me to learn async
-		log.debug("Is %s installed on %s?" % (bundleId,self.device.short_info))
-		domains = self.searchAppDomains(self.device)
-		# search should be a list of dicts
-		for apps in domains:
-			# parse the list first
-			for app in apps.keys():
-				#log.debug("checking %s against %s" % (bundleId.lower(),app.lower()))
-				if bundleId.lower() == app.lower():
-					log.debug("App is already installed")
-					return True
-		return False
 	
 	# input self, app_size(bytes)
 	# return - Bool - Will the app fit on the device? 
@@ -231,22 +135,12 @@ class Device(object):
 	def backgroundThread(self):
 		log.debug("Threading the forwarder until the script is killed")
 		self.device.forwarder.start()
-    
-	# input - self(obj)
-	# return - int - a random and available port within a specific range
-	def randPort(self):
-		import random
-		port = random.randint(60000,65000)
-		while True:
-			if isPortAvail(port):
-				log.debug("Port [%i] is available" % (port))
-				return port
 		
 	# input - self(obj)
 	# return - threading.Thread obj
 	def setupUSBconn(self) -> threading.Thread:
 		# create a usbmux daemonized object that will allow for interaction with the devices over usb ssh
-		self.device.src_port = self.randPort() # get a currently available port from 60k to 65k 
+		self.device.src_port = utils.randPort() # get a rand port that's avi
 		self.device.dst_port = 22 # 
 		log.debug("Starting USBMuxd on src_port: [%s]" %self.device.src_port)
 		try:
@@ -299,34 +193,6 @@ class Device(object):
 		else:
 			log.fatal("Error getting response from SSH Client")
 			return False
-	
-	# input - device (lockdown obj), bundleId (str)
-	# return - bool - return status of app launch
-	def launchApp(self,bundleId):
-		if self.isMounted():
-			with DvtSecureSocketProxyService(lockdown=self.device) as dvt:
-				self.pid = ProcessControl(dvt).launch(bundle_id=bundleId)
-			if self.pid >= 1:
-				log.debug("App [%s] launched successfully on PID [%s]" % (bundleId, self.pid))
-				# handle decrypt here
-				self.decryptApp()
-			else:
-				log.halt("get error from launch") # need to relaunch
-				#self.appRunning(device,bundleId) # TODO we could do some manual verification or even get current foreground app/pid
-		else:
-			self.mountHandler(self.device)
-
-	# input - device (lockdown obj)
-	# return - bool - did the app launch successfully?
-	def appRunning(self,bundleId):
-		log.debug("Is [%s] App Running on device [%s]?" % (bundleId,self.device))
-		expression = bundleId
-		processes_list = OsTraceService(lockdown=self.device).get_pid_list().get('Payload')
-		for pid, process_info in processes_list.items():
-			process_name = process_info.get('ProcessName')
-			if expression in process_name:
-				return True
-		return False
 
 	# input - device
 	# return - bool - is device mounted or nah?
@@ -380,16 +246,75 @@ class Device(object):
 			log.debug("Not found: [%s] or [%s]" % (dev_image,dev_sig))
 			return False
 		
+	# input - device (lockdown obj), bundleId (str)
+	# return - bool - return status of app launch
+	def launchApp(self,bundleId):
+		if self.isMounted():
+			with DvtSecureSocketProxyService(lockdown=self.device) as dvt:
+				self.pid = ProcessControl(dvt).launch(bundle_id=bundleId)
+			if self.pid >= 1:
+				log.debug("App [%s] launched successfully on PID [%s]" % (bundleId, self.pid))
+				# handle decrypt here
+				self.decryptApp(bundleId)
+			else:
+				log.halt("get error from launch") # need to relaunch
+				#self.appRunning(device,bundleId) # TODO we could do some manual verification or even get current foreground app/pid
+		else:
+			self.mountHandler(self.device)
+	
+	# input - lockdown obj, app (file path)
+	# return - bool - Status of installation
+	def installApp(self,filepath,bundleId) -> bool:
+		log.debug("Installing %s on %s" % (filepath, self.device.short_info['Identifier']) )
+		#print(self.app_manager.is_installed(bundleId))
+		# check for existing apps already
+		if self.app_manager.is_installed(bundleId):
+			if self.uninstallApp(bundleId):
+				log.debug("Uninstalled Successful")
+				pass # continue with reinstall
+			else:
+				log.halt("Uninstall Failure: Exit")
+				return False
+
+		# can I get a progress bar or something here? 
+		log.debug("Installation Proxy Service Starting")
+		InstallationProxyService(lockdown=self.device).install_from_local(filepath) # thread?
+		log.debug("Installation Proxy Service: Completed")
+		
+		self.app_manager.refresh_apps()
+		
+		if self.app_manager.is_installed(bundleId):
+			return True
+		else:
+			log.fatal("Error App did not install correctly")
+
+	# input - self, bundleId (str), device (lockdown obj)
+	# return - Bool - was the app successfully uninstalled?
+	def uninstallApp(self,bundleId) -> bool:
+		log.debug("Uninstalling %s on %s" % (bundleId, self.device.identifier))
+		try:
+			InstallationProxyService(lockdown=self.device).uninstall(bundleId)
+			return True
+		except:
+			log.error("Error uninstalling")
+			return False
+
 	# input - 
 	# return - 
-	def decryptApp(self):
-		print(dir(self))
-		log.halt("here")
-		sesh = decrypt.FridaSession(self.device,"Facebook")
-		# check for root
+	def decryptApp(self,bundleId):
+		# check for root and frida session
 		if self.isRoot() and self.isFridaReady(): #TODO: i'll probably change the isFridaReady to the FridaSession Obj
 			log.debug("Device is rooted and Frida is ready begin dump.")
 		else:
 			log.fatal("Device is not rooted or unable to get Frida port")
+		sesh = decrypt.FridaSession(self.device)
+		# print(sesh.session)
+		# print(dir(sesh))
+		# print(dir(sesh.session))
+		foreground = sesh.session.get_frontmost_application().identifier == bundleId
+		if not foreground:
+			log.halt("not in the foreground exiting...fixme"); sys.exit()
+		
+		# 
 
-		print(dir(sesh.session))
+

@@ -8,6 +8,31 @@ import sys, requests, time
 from utils import utils, logger
 log = logger.LogAdapter(__name__)
 
+
+# input - self(obj)
+# return - bool - is the port available? return True if we can use it and false if it's already blocked by another proc
+def isPortAvail(port):
+	# decided to pull this func out of the Device/Devices class because it doesn't really need those objects. and it's about the 
+	# local device so it didn't feel "right"
+	import socket
+	a_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	status = (a_socket.connect_ex(("127.0.0.1", int(port))) != 0)
+	if status:
+		log.debug("isPort [%s] Avail? [%s]" % (port,status))
+		return True
+	else:
+		return False
+
+# input - self(obj)
+# return - int - a random and available port within a specific range
+def randPort():
+    import random
+    port = random.randint(60000,65000)
+    while True:
+        if isPortAvail(port):
+            log.debug("Port [%i] is available" % (port))
+            return port
+
 # input - timestamp (time obj)
 # return - time.gmtime (time obj)
 def get_zipinfo_datetime(timestamp=None):
@@ -28,9 +53,7 @@ def downloadFile(url, outfile):
         with open(outfile, 'wb') as f:
             lastLen = 0
             for chunk in r.iter_content(chunk_size=1 * 1024 * 1024):
-                # If you have chunk encoded response uncomment if
-                # and set chunk_size parameter to None.
-                # if chunk:
+
                 f.write(chunk)
                 downLen += len(chunk)
                 if totalLen and downLen - lastLen > totalLen * 0.05:

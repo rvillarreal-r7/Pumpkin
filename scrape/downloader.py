@@ -16,7 +16,7 @@ from utils import utils, logger
 log = logger.LogAdapter(__name__)
 
 # globals
-DOWNLOAD_DIR = "./downloads/apps/"
+DOWNLOAD_DIR = "./data/apps/"
 
 class IPATool(object):
     # input - self(obj)
@@ -37,6 +37,8 @@ class IPATool(object):
         # handle if the user wants to choose a device
         self.devices = device.Devices()
         self.target = self.devices.getLockdown("0e0499a792fcc045297781ded452c664902ebf31")
+
+        # self.app_manager = self.target.app_manager()
 
         # Store session setup
         retry_strategy = Retry(
@@ -120,7 +122,8 @@ class IPATool(object):
         log.debug("Found app:\n\tName: %s\n\tVersion: %s\n\tbundleId: %s\n\tappId: %s" % (self.appInfo.trackName, self.appInfo.version, self.appInfo.bundleId, self.appInfo.trackId))
 
         if self.appDownloaded():
-            if self.target.isAppInstalled(self.appInfo.bundleId): 
+            if self.target.app_manager.is_installed(self.appInfo.bundleId):
+                log.halt("here")
                 if utils.choice("Would you like to Reinstall [%s]" % (self.appInfo.bundleId)):
                      self.handleInstall()
                 else:
@@ -164,7 +167,7 @@ class IPATool(object):
         log.debug("Found app:\n\tName: %s\n\tVersion: %s\n\tbundleId: %s\n\tappId: %s" % (self.appInfo.trackName, self.appInfo.version, self.appInfo.bundleId, self.appInfo.trackId))
 
         if self.appDownloaded():
-            if self.target.isAppInstalled(self.appInfo.bundleId): 
+            if self.target.app_manager.is_installed(self.appInfo.bundleId): 
                 if utils.choice("Would you like to Reinstall [%s]" % (self.appInfo.bundleId)):
                     self.handleInstall()
                 else:
