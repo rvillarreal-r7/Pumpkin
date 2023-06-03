@@ -314,7 +314,8 @@ class Device(object):
 		if not foreground:
 			log.halt("not in the foreground exiting...fixme"); sys.exit()
 		
-		sesh.dump(bundleId)
+		# frida sesh with the bundleId
+		sesh.dump(self.app_manager.get_app(bundleId))
 		log.halt("exiting")
 
 

@@ -135,8 +135,6 @@ class IPATool(object):
                 if self.handleDownload():
                     self.handleInstall()
                 else:
-                    log.halt("here")
-                    self.target = self.getDevice()
                     self.target.launchApp()
             
     # input - self(obj),args(argparse obj)

@@ -25,10 +25,19 @@ class AppManager(object):
 
     def is_installed(self,bundleId):
         for app in self.apps:
-             if app.bundle_id == bundleId:
+             if app.bundleId == bundleId:
                  return True
         return False
-    
+
+    # input - self(obj), bundleId(str)
+    # return - get the App Object and return to caller
+    def get_app(self,bundleId):
+        for app in self.apps:
+             if app.bundleId == bundleId:
+                return app
+        # if we get to here something went wrong
+        log.fatal("App not found! Panic!")
+
     def installed_apps(self):
         log.debug("Retrieving info for all installed apps for device: [%s]" % self.device.identifier)
         results = InstallationProxyService(lockdown=self.device).get_apps()
@@ -47,7 +56,7 @@ class AppManager(object):
 class App(object):
     def __init__(self,app):
         self.name = app.get('CFBundleName')
-        self.bundle_id = app.get('CFBundleIdentifier')
+        self.bundleId = app.get('CFBundleIdentifier')
         self.path = app.get('Path')
         self.min_version = app.get('MinimumOSVersion')
         # add more? 

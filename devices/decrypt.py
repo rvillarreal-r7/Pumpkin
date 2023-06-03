@@ -7,39 +7,60 @@ log = logger.LogAdapter(__name__)
 
 
 #globs
-TEMP_DIR = tempfile.gettempdir()
-PAYLOAD_DIR = 'Payload'
-PAYLOAD_PATH = os.path.join(TEMP_DIR, PAYLOAD_DIR)
+OUTPUT_DIR = tempfile.TemporaryDirectory(dir="./data/output")
+PAYLOAD_PATH = os.path.join(OUTPUT_DIR.name + "/Payload")
+script_dir = os.path.dirname(os.path.realpath(__file__)) + "/scripts" # script_dir
+DUMP_JS = os.path.join(script_dir, 'dump.js') # placeholder for specific script
 
 class FridaSession(object):
     def __init__(self,device):
         log.debug("Initializing FridaSession Obj")
         self.session = self.setupSession(device)
-        self.tmp_dir = self.create_dir()
 
+    # input - 
+    # return - 
     def setupSession(self,device):
         try:
             return frida.get_device(device.identifier)
         except:
             log.fatal("Error getting FridaSession")
 
-    def create_dir(self,path=OUTPUT_DIR):
+    # input - 
+    # return -
+    def dump(self,app):
+        log.debug('Dumping App [%s]' % app.bundleId)
+        try:
+            self.create_dir()
+        except:
+            log.fatal('Could not create tmp dir') # panic
+       
+        if self.tmp_dir == None:
+            log.fatal("self.tmp_dir is None") # panic again?
+         
+        log.debug("Dumping [%s] to [%s]" % (app.bundleId,self.tmp_dir))
+        script = self.load_js_file(DUMP_JS)
+        
+    # input - 
+    # return -
+    def create_dir(self):
         # create temp dir for dumping to
         try:
-            os.makedirs(OUTPUT_DIR)
+            os.makedirs(PAYLOAD_PATH)
+            self.tmp_dir = PAYLOAD_PATH
         except os.error as err:
-            log.error(err)
-
-        log.halt("create dir")
+            log.halt(err)
     
+    # input - 
+    # return - 
     def load_js_file(self, filename):
         source = ''
-        with codecs.open(filename, 'r', 'utf-8') as f:
-            source = source + f.read()
-        log.halt("huh? fixme")
-
-    def dump(self,app):
-        log.debug('Dumping App [%s]')
+        try:
+            with codecs.open(filename, 'r', 'utf-8') as f:
+                source = source + f.read()
+        except:
+            log.fatal("Couldn't open script file")
+        log.halt("inside load_js_file")
+    
     
 
     def generate_ipa(path, display_name):

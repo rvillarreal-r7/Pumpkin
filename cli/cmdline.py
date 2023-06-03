@@ -31,6 +31,6 @@ def lookup(args):
 # input - args (argparse obj)
 # return - None
 def devices(args=None):
-    log.debug("Args provided. Run management tooling")
+    dl = downloader.IPATool(args)
     log.halt("Implement Device Management - fixme")
     utils.kbye(__name__)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import logging
+import logging,inspect,traceback
 
 # create an obj for passing around
 class LogAdapter(logging.LoggerAdapter):
@@ -9,7 +9,7 @@ class LogAdapter(logging.LoggerAdapter):
     def info(self,msg):
         self.logger.info(msg)
 
-    def debug(self,msg):
+    def debug(self,msg=None,data=None):
         self.logger.debug(msg)
 
     def warning(self,msg):
@@ -18,17 +18,34 @@ class LogAdapter(logging.LoggerAdapter):
     def error(self,msg):
         self.logger.error(msg)
     
-    def fatal(self,msg):
-        self.logger.fatal(msg)
-        from utils import utils
-        utils.kbye()
+    def fatal(self,msg=None):
+        if msg != None:
+            self.logger.fatal(msg)
+        self.kbye()
 
     def halt(self,msg):
         self.logger.warning("HALTED: %s " % msg)
         input("Press [Enter] to continue")
+
+    def stack(self,data):
+        # initialize the inspect obj
+        frame = inspect.currentframe()
+        stack_trace = traceback.format_stack(frame)
+
+        for item in stack_trace:
+            print(item.strip())
+        if data != None:
+            print("TYPE: [%s]" % type(data))
+            print("DATA: [%s]" % data)
+            print("PROPS: [%s]" % (dir(data)))
+        input("Stack Output: Press [Enter] to continue")
         
     def getLevel(self):
         return self.logger.level
+
+    def kbye(self):
+        self.logger.fatal("Panic!")
+        import sys; sys.exit()
 
 def setup_logger(level=logging.DEBUG, log_to_file=False, log_prefix=None, logger_name=__name__):
     # define handler and formatter
