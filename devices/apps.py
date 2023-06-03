@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pymobiledevice3.services.installation_proxy import InstallationProxyService
+from pymobiledevice3.services.os_trace import OsTraceService
 
 # prepend all scripts with logger object retrieval
 from utils import logger
@@ -59,5 +60,15 @@ class App(object):
         self.bundleId = app.get('CFBundleIdentifier')
         self.path = app.get('Path')
         self.min_version = app.get('MinimumOSVersion')
+        self.pid = None
         # add more? 
         log.debug("App Initialization for [%s]" % self.name)
+    
+    def set_pid(self,pid):
+        self.pid = pid
+
+    def get_pid(self):
+        if self.pid:
+            return self.pid
+        else:
+            log.fatal("panic, not sure how pid is None")

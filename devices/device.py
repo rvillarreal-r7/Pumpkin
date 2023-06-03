@@ -1,10 +1,6 @@
 #!/usr/bin/env python3
-import json
-import math
 import sys
 import os
-import time
-import tempfile
 from pathlib import Path
 
 
@@ -16,7 +12,6 @@ from pathlib import Path
 
 # local imports
 from utils import utils
-from scrape import downloader
 from devices import decrypt
 from devices import apps
 
@@ -117,8 +112,8 @@ class Device(object):
 		self.setupSSHconn()
 
 		# TODO err handling here
-		self.device.frida_session = decrypt.FridaSession(self.device)
-	
+		#self.device.frida_session = decrypt.FridaSession(self.device)
+		
 	# input - lockdown obj
 	# return - available device storage in byte_size(str)
 	def getDeviceStorage(self):
@@ -307,15 +302,19 @@ class Device(object):
 			log.debug("Device is rooted and Frida is ready begin dump.")
 		else:
 			log.fatal("Device is not rooted or unable to get Frida port")
-		sesh = decrypt.FridaSession(self.device)
-
-		# handle foreground errors
-		foreground = sesh.session.get_frontmost_application().identifier == bundleId
-		if not foreground:
-			log.halt("not in the foreground exiting...fixme"); sys.exit()
+		sesh = decrypt.FridaSession(self.device) # lockdown obj
 		
-		# frida sesh with the bundleId
+		# handle foreground errors
+		target_app = sesh.session.get_frontmost_application()
+		if not target_app:
+			log.debug("Target App not in the foreground, attempting to collect PID by lookup")
+			target_pid = sesh.session.get_process(self.app_manager.get_app(bundleId).name).pid
+		else:
+			target_pid = target_app.pid
+		# I think the app needs to hold the new pid for transport
+		self.app_manager.get_app(bundleId).set_pid(target_pid)
 		sesh.dump(self.app_manager.get_app(bundleId))
-		log.halt("exiting")
+		
+		log.halt("Finished. Exiting")
 
 
