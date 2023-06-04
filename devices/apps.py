@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pymobiledevice3.services.installation_proxy import InstallationProxyService
+from pymobiledevice3.services.os_trace import OsTraceService
 
 # prepend all scripts with logger object retrieval
 from utils import logger
@@ -25,10 +26,19 @@ class AppManager(object):
 
     def is_installed(self,bundleId):
         for app in self.apps:
-             if app.bundle_id == bundleId:
+             if app.bundleId == bundleId:
                  return True
         return False
-    
+
+    # input - self(obj), bundleId(str)
+    # return - get the App Object and return to caller
+    def get_app(self,bundleId):
+        for app in self.apps:
+             if app.bundleId == bundleId:
+                return app
+        # if we get to here something went wrong
+        log.fatal("App not found! Panic!")
+
     def installed_apps(self):
         log.debug("Retrieving info for all installed apps for device: [%s]" % self.device.identifier)
         results = InstallationProxyService(lockdown=self.device).get_apps()
@@ -47,8 +57,18 @@ class AppManager(object):
 class App(object):
     def __init__(self,app):
         self.name = app.get('CFBundleName')
-        self.bundle_id = app.get('CFBundleIdentifier')
+        self.bundleId = app.get('CFBundleIdentifier')
         self.path = app.get('Path')
         self.min_version = app.get('MinimumOSVersion')
+        self.pid = None
         # add more? 
         log.debug("App Initialization for [%s]" % self.name)
+    
+    def set_pid(self,pid):
+        self.pid = pid
+
+    def get_pid(self):
+        if self.pid:
+            return self.pid
+        else:
+            log.fatal("panic, not sure how pid is None")
