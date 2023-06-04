@@ -66,7 +66,7 @@ class IPATool(object):
                 self.appleid = self.args.appleid
                 self.applepass = self.args.password
             else:
-                log.halt(self.appleid) # shouldn't see this for the time being.
+                log.halt("I Uh...wut") # shouldn't see this for the time being.
         except:
             self.appleid = input("Username: ")
             self.applepass = getpass.getpass()
@@ -122,7 +122,6 @@ class IPATool(object):
 
         if self.appDownloaded():
             if self.target.app_manager.is_installed(self.appInfo.bundleId):
-                log.halt("here")
                 if utils.choice("Would you like to Reinstall [%s]" % (self.appInfo.bundleId)):
                      self.handleInstall()
                 else:
@@ -191,12 +190,12 @@ class IPATool(object):
             log.debug("Attempting Apple Store Auth..")
             Store = self._get_StoreClient()
             try:
+                log.debug("Get license for App")
                 Store.purchase(self.appInfo.trackId)
             except StoreException as e:
                 if e.errMsg == 'purchased_before':
                     log.warning("You have already purchased appId [%s] before, continuing." % (self.appInfo.bundleId))
             log.info("Retriving download info for appId [%s] with versionId [%s]" % (self.appInfo.bundleId, self.appInfo.version))
-
             try:
                 downResp = Store.download(appId=self.appInfo.trackId)
             except StoreException as e:
