@@ -32,7 +32,9 @@ class FridaSession(object):
             return frida.get_device(self.devId)
         except:
             log.fatal("Error getting FridaSession")
-
+    
+    # input - 
+    # return - 
     def get_file(self,remote_file,category):
         if category == "dump":
             filename = os.path.basename(remote_file)
@@ -70,8 +72,8 @@ class FridaSession(object):
         else:
             log.fatal("error")
     
-
-
+    # input - 
+    # return - 
     def on_message(self, message, data):
         log.debug("Message from Frida's on_message")
         if 'payload' in message:
@@ -120,7 +122,6 @@ class FridaSession(object):
         log.debug("Finished with Dump")
         self.generate_ipa(PAYLOAD_PATH, app.name)
 
-        
     # input - 
     # return -
     def create_dir(self):
@@ -143,7 +144,8 @@ class FridaSession(object):
             log.fatal("Couldn't open script file")
         return source
 
-    
+    # input - 
+    # return - 
     def generate_ipa(self, path, display_name):
         ipa_filename = display_name + '.ipa'
         log.debug('Generating "{}"'.format(ipa_filename))
