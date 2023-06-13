@@ -2,7 +2,7 @@
 
 # external imports
 from pick import pick
-import sys, requests, time
+import sys, requests, time, math
 
 # prepend all modules
 from utils import utils, logger
@@ -76,7 +76,7 @@ def choice(msg=None) -> bool:
     yes_choices = ['yes', 'y']
     no_choices = ['no', 'n']
     if msg:
-        user_input = input("%s [yes/no] " % (msg))
+        user_input = input(f"{msg} [yes/no] ")
     else: # if no msg passed in a simple yes or no will suffice. 
         user_input = input("Continue? [yes/no] ")
     # check answer

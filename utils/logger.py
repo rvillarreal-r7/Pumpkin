@@ -1,10 +1,21 @@
 #!/usr/bin/env python3
 import logging,inspect,traceback
+from colored import fg, bg, attr
+
+# define the color scheme
+# ORANGE for funsies and highlighting. 
+# LIGHT_GRAY for detailed info that needs attention
+# GRAY for background info, important but not attention grabbing important
+# MOLLY black
+ORANGE=fg(209)
+LIGHT_GRAY=fg(250)
+GRAY=fg(245)
+MOLLY=fg(0)
 
 # create an obj for passing around
 class LogAdapter(logging.LoggerAdapter):
-    def __init__ (self,logger_name):
-        self.logger = setup_logger(logger_name=logger_name)
+    def __init__ (self,logger_name,level=logging.INFO): # defaults to INFO output
+        self.logger = setup_logger(logger_name=logger_name, level=level) # passes the level which by default info
 
     def info(self,msg):
         self.logger.info(msg)
@@ -20,26 +31,38 @@ class LogAdapter(logging.LoggerAdapter):
     
     def fatal(self,msg=None):
         if msg != None:
-            self.logger.fatal(msg)
+            self.logger.fatal(msg) 
         self.kbye()
 
     def halt(self,msg):
-        self.logger.warning("HALTED: %s " % msg)
-        input("Press [Enter] to continue")
+        self.logger.warning(f"{LIGHT_GRAY}HALTED: {msg}")
+        input(f"{LIGHT_GRAY}Press [Enter] to continue")
 
     def stack(self,data):
         # initialize the inspect obj
         frame = inspect.currentframe()
         stack_trace = traceback.format_stack(frame)
-
-        for item in stack_trace:
-            print(item.strip())
-        if data != None:
-            print("TYPE: [%s]" % type(data))
-            print("DATA: [%s]" % data)
-            print("PROPS: [%s]" % (dir(data)))
-        input("Stack Output: Press [Enter] to continue")
+        print(f'{GRAY}{frame}')
         
+        # for line in stack trace print in a light gray with info slightly lighter. 
+        for item in stack_trace:
+            print(f"{fg(245)}stack_trace: {fg(247)}{item.strip()}")
+        # as long as the data passed into the stack trace func isn't null we can print info about it. 
+        if data != None:
+            print(f"{GRAY}TYPE: {LIGHT_GRAY}{type(data)}")
+            print(f"{GRAY}DATA: {LIGHT_GRAY}{data}")
+            print(f"{GRAY}PROPS: {LIGHT_GRAY}{dir(data)}")
+            properties = vars(data)                 # Get the dictionary of object properties
+            for prop, value in properties.items():  # loop through printing the props and values
+                print(f"{GRAY}Property: [{LIGHT_GRAY}{prop}{GRAY}] - Value: {LIGHT_GRAY}{value}")
+        # add a choice here to dump back to the cmdline
+        yes_choices = ['yes', 'y']
+        no_choices = ['no', 'n']
+        if input(f"{LIGHT_GRAY}Continue to pdb? [yes/no] "):
+            # set the output back to "normal" which is our light_gray
+            from pdb import set_trace as bp
+            bp() # will drop the user into pdb shell with light gray text
+
     def getLevel(self):
         return self.logger.level
 
@@ -47,11 +70,24 @@ class LogAdapter(logging.LoggerAdapter):
         self.logger.fatal("Panic!")
         import sys; sys.exit()
 
-def setup_logger(level=logging.DEBUG, log_to_file=False, log_prefix=None, logger_name=__name__):
+def update_logger(level) -> None:
+        # Get the root logger
+        root_logger = logging.getLogger()
+
+        # Set the new logging level for the root logger
+        root_logger.setLevel(level)
+
+        # Iterate over all existing loggers and set the new logging level
+        for logger_name in logging.Logger.manager.loggerDict.keys():
+            logger = logging.getLogger(logger_name)
+            logger.setLevel(level)
+
+
+def setup_logger(level=logging.INFO, log_to_file=False, log_prefix=None, logger_name=__name__):
     # define handler and formatter
     handler = logging.StreamHandler()
     # change formatting and look here.
-    formatter = logging.Formatter("%(levelname)s - [%(name)s] - %(message)s")
+    formatter = logging.Formatter("[%(name)s] - %(message)s")
 
     # add formatter to handler
     handler.setFormatter(formatter)
