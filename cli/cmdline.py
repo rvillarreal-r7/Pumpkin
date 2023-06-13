@@ -30,7 +30,15 @@ def lookup(args):
 
 # input - args (argparse obj)
 # return - None
-def devices(args=None):
-    dl = downloader.IPATool(args)
-    log.halt("Implement Device Management - fixme")
+def devices(args):
+    # eventually I could implement a REPL here for interactive management
+    # but for now just testing two funcs. list and info
+    connected_devices = device.Devices()
+    if args.info:
+        print("running info")
+    elif args.list:
+        connected_devices.list()
+    else:
+        log.fatal(__name__)
+    # exit 
     utils.kbye(__name__)

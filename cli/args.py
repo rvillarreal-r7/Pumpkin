@@ -29,15 +29,18 @@ api_subparser.add_argument('--info', action='store_true', help='Get list of conn
 device_parser = subparsers.add_parser('device', help='Perform device operations')
 device_parser.add_argument('--verbose', '-v', action='store_true') # I really hate this...
 device_subparser = device_parser.add_mutually_exclusive_group(required=True)
-device_subparser.add_argument('--info',action='store_true', help='Get list of connected devices')
-device_subparser.add_argument('--list',action='store_true', help='Get list of connected devices')
+device_subparser.add_argument('--info','-i',action='store_true', help='Get list of connected devices')
+device_subparser.add_argument('--list','-l',action='store_true', help='Get list of connected devices')
+
 
 # Parse the command-line arguments
 args = parser.parse_args()
 
+# increase verbosity if flag set
 if args.verbose:
-    logger.update_logger(logging.DEBUG) # if we have verbose flag increease logging level
+    logger.update_logger(logging.DEBUG)
 
+# parse the commands - git syntax 
 if args.command:
     # Three core CLI options [cli,api,dev]
     if args.command == 'cmd':

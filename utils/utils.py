@@ -30,7 +30,6 @@ def randPort():
     port = random.randint(60000,65000)
     while True:
         if isPortAvail(port):
-            log.debug("Port [%i] is available" % (port))
             return port
 
 # input - timestamp (time obj)
@@ -100,6 +99,8 @@ def convert_size(size_bytes):
 
 # input - None
 # return - None 
-def kbye(caller=__name__):
-    log.info("%s: kthxbye!" % caller)
+def kbye(caller=None):
+    # if we are being verbose tell the user where we left off
+    if log.getLevel() <= 10:
+        log.info("%s: kthxbye!" % caller)
     sys.exit()
