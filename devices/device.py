@@ -3,13 +3,6 @@ import sys
 import os
 from pathlib import Path
 
-
-### TODO - 
-# Clean up the formatting. 
-# we should standardize where the parameters are going i.e. (self,device,bundleId/targetdev/whatever)
-# I should probably break this up to a more manageable class - 
-# - break apps into a objects
-
 # local imports
 from utils import utils
 from devices import decrypt
@@ -39,7 +32,6 @@ from pymobiledevice3.tcp_forwarder import TcpForwarder
 
 # external imports
 import threading,frida
-
 
 DISK_IMAGE_TREE = 'https://api.github.com/repos/pdso/DeveloperDiskImage/git/trees/master'
 IMAGE_TYPE = 'Developer'
@@ -73,19 +65,18 @@ class Devices(object):
 			sys.exit()
 
 		for device in usbmux.list_devices():
-			log.debug("Device: [%s]" % device)
+			log.debug("Adding Device: [%s]" % device)
 			udid = device.serial
 			lockdown = LockdownClient(udid, autopair=False, usbmux_connection_type=device.connection_type)
 			connected_devices.append(lockdown) # adding the entire lockdown obj to the list to return. That way we can pass it
 		return connected_devices
 
 	# input - self(obj)
-	# return - None - Print device info - ignoring logging here?
-	def getDevicesInfo(self):
-		log.debug("Devices:")
+	# return - None - Print connected devices info
+	def list(self):
 		for device in self.devices:
-			log.info("\nDevice:[%s]\nIdentifier:[%s]\nVersion:[%s]\n" % (device.display_name, device.identifier, device.product_version))
-
+			self.getLockdown(device.identifier).info()
+		
 	# input - self(obj), device_identifier(str) - uses the 'Identifier' string 
 	# return - Device(obj) - returns the Lockdown Client Obj for the target device
 	def getLockdown(self,device_identifier):
@@ -114,6 +105,9 @@ class Device(object):
 		# TODO err handling here
 		#self.device.frida_session = decrypt.FridaSession(self.device)
 		
+	def info(self):
+		log.info(f'Device: {self.device.short_info}')
+
 	# input - lockdown obj
 	# return - available device storage in byte_size(str)
 	def getDeviceStorage(self):
@@ -135,7 +129,7 @@ class Device(object):
 	# return - threading.Thread obj
 	def setupUSBconn(self) -> threading.Thread:
 		# create a usbmux daemonized object that will allow for interaction with the devices over usb ssh
-		self.device.src_port = utils.randPort() # get a rand port that's avi
+		self.device.src_port = utils.randPort() # get a rand port that's avail
 		self.device.dst_port = 22 # 
 		log.debug("Starting USBMuxd on src_port: [%s]" %self.device.src_port)
 		try:

@@ -2,6 +2,8 @@
 from pymobiledevice3.services.installation_proxy import InstallationProxyService
 from pymobiledevice3.services.os_trace import OsTraceService
 
+import time,threading
+
 # prepend all scripts with logger object retrieval
 from utils import logger
 log = logger.LogAdapter(__name__)
@@ -12,7 +14,7 @@ class AppManager(object):
     def __init__(self,device):
         self.apps = []
         self.device = device # lockdown obj stored for later use
-        self.installed_apps() # get the current apps installed on startup
+        self.installed_apps() # get the current apps installed on startup # return after testing
         log.debug("End of AppManager __init__")
 
     def add_app(self, app):
@@ -41,7 +43,7 @@ class AppManager(object):
 
     def installed_apps(self):
         log.debug("Retrieving info for all installed apps for device: [%s]" % self.device.identifier)
-        results = InstallationProxyService(lockdown=self.device).get_apps()
+        results = InstallationProxyService(lockdown=self.device).get_apps(['User','System','Hidden'])
         for entry in results:
             self.add_app(App(entry))
 
@@ -62,8 +64,8 @@ class App(object):
         self.min_version = app.get('MinimumOSVersion')
         self.pid = None
         # add more? 
-        log.debug("App Initialization for [%s]" % self.name)
-    
+        log.debug("App Initialization for [%s] complete" % self.name)
+
     def set_pid(self,pid):
         self.pid = pid
 

@@ -17,8 +17,13 @@ class LogAdapter(logging.LoggerAdapter):
     def __init__ (self,logger_name,level=logging.INFO): # defaults to INFO output
         self.logger = setup_logger(logger_name=logger_name, level=level) # passes the level which by default info
 
-    def info(self,msg):
-        self.logger.info(msg)
+    def info(self,msg,color=True):
+        # build the msg # later add a color.False
+        if color:
+            output = f'{LIGHT_GRAY}{msg}'
+            print(output)
+        else:
+            print("only color supported at this time")
 
     def debug(self,msg=None,data=None):
         self.logger.debug(msg)
@@ -31,12 +36,12 @@ class LogAdapter(logging.LoggerAdapter):
     
     def fatal(self,msg=None):
         if msg != None:
-            self.logger.fatal(msg) 
-        self.kbye()
+            self.logger.fatal(f'{msg}') 
+        self.kbye() # panic exit
 
     def halt(self,msg):
         self.logger.warning(f"{LIGHT_GRAY}HALTED: {msg}")
-        input(f"{LIGHT_GRAY}Press [Enter] to continue")
+        input(f"{LIGHT_GRAY}Press [Enter] to continue") # don't panic exit
 
     def stack(self,data):
         # initialize the inspect obj
@@ -49,16 +54,17 @@ class LogAdapter(logging.LoggerAdapter):
             print(f"{fg(245)}stack_trace: {fg(247)}{item.strip()}")
         # as long as the data passed into the stack trace func isn't null we can print info about it. 
         if data != None:
-            print(f"{GRAY}TYPE: {LIGHT_GRAY}{type(data)}")
-            print(f"{GRAY}DATA: {LIGHT_GRAY}{data}")
-            print(f"{GRAY}PROPS: {LIGHT_GRAY}{dir(data)}")
+            print(f"{GRAY}Type: {LIGHT_GRAY}{type(data)}")
+            print(f"{GRAY}Data: {LIGHT_GRAY}{data}")
+            print(f"{GRAY}Props: {LIGHT_GRAY}{dir(data)}")
             properties = vars(data)                 # Get the dictionary of object properties
             for prop, value in properties.items():  # loop through printing the props and values
                 print(f"{GRAY}Property: [{LIGHT_GRAY}{prop}{GRAY}] - Value: {LIGHT_GRAY}{value}")
         # add a choice here to dump back to the cmdline
         yes_choices = ['yes', 'y']
         no_choices = ['no', 'n']
-        if input(f"{LIGHT_GRAY}Continue to pdb? [yes/no] "):
+        user_input = input(f"{LIGHT_GRAY}Continue to pdb? [yes/no] ")
+        if user_input in yes_choices:
             # set the output back to "normal" which is our light_gray
             from pdb import set_trace as bp
             bp() # will drop the user into pdb shell with light gray text
