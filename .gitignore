@@ -133,4 +133,4 @@ notes/*
 data/*
 # test script for one-off tests
 tests/test.py
-
+.DS_Store
