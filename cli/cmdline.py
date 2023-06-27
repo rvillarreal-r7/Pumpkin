@@ -11,6 +11,7 @@ from devices import device
 # input - args (argparse obj)
 # return - None
 def search(args):
+    log.stack(args)
     dl = downloader.IPATool(args)
     
     if dl.handleSearch():
@@ -42,3 +43,7 @@ def devices(args):
         log.fatal(__name__)
     # exit 
     utils.kbye(__name__)
+
+
+def test():
+    print("hello, world")
