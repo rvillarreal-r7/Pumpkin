@@ -1,5 +1,17 @@
 # Pumpkin
 
+## What is it?
+Pumpkin's goal is to make life easier to obtain decrypted iOS IPA files from the Apple App store. Why would we need to do that? Many customers/clients will request Rapid7 Pentesting services to obtain and show proof-of-concepts from the perspective of a real world user. 
+
+Pumpkin's purpose is not to replace already exisiting toolsets in the Mobile Pentesting Community Space, but instead seeks to extend those projects and package multiple tools into a single usable project. 
+
+Projects that have been integeral to the development of Pumpkin and a huge shoutout to the developers on those projects!
+### Third-Party Projects
+1. [PyMobileDevice3](https://github.com/doronz88/pymobiledevice3)
+2. [ipatool-py](https://github.com/NyaMisty/ipatool-py)
+3. [Frida Framework](https://github.com/frida)
+4. [frida-ios-dump](https://github.com/AloneMonkey/frida-ios-dump)
+
 ## Design Choices
 I am using Python for quickness, but a compiled language might be better later on. 
 
