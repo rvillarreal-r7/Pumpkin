@@ -3,7 +3,9 @@
 ## What is it?
 Pumpkin's goal is to make life easier to obtain decrypted iOS IPA files from the Apple App store. Why would we need to do that? Many customers/clients will request Rapid7 Pentesting services to obtain and show proof-of-concepts from the perspective of a real world user. 
 
-Pumpkin's purpose is not to replace already exisiting toolsets in the Mobile Pentesting Community Space, but instead seeks to extend those projects and package multiple tools into a single usable project. 
+While performing all of these steps individually is completely possible. Pumpkin's purpose is not to replace already exisiting toolsets in the Mobile Pentesting Community Space, but instead seeks to extend those projects and package multiple tools into a single usable project. 
+
+One possible scenario of using Pumpkin over individual scripts would be the potential to automate the process of scraping the Apple App Store with a list of applications based on appId, decrypt them using various devices, perform a transport to third-party tools such as Mobile Security Framework (MobSF). Or maybe you need to resign the decrypted project and want to upload it to Corellium? Just think of the possibilities. 
 
 Projects that have been integeral to the development of Pumpkin and a huge shoutout to the developers on those projects!
 ### Third-Party Projects
